@@ -1,0 +1,82 @@
+import dbConnect from "@/lib/dbConnect";
+import SuperAdmin from "@/models/SuperAdmin";
+import ShopAdmin from "@/models/ShopAdmin";
+import Customer from "@/models/Customer";
+import Shop from "@/models/Shop";
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+
+export async function POST(request) {
+  await dbConnect();
+
+  try {
+    const { role, email, password, shopId, phone } = await request.json();
+
+    if (!role) {
+      return NextResponse.json({ message: "Role is required." }, { status: 400 });
+    }
+
+    let user;
+    let isPasswordCorrect;
+
+    switch (role) {
+      case 'superadmin':
+        if (!email || !password) return NextResponse.json({ message: "Email and password required." }, { status: 400 });
+        user = await SuperAdmin.findOne({ email });
+        if (user) isPasswordCorrect = await bcrypt.compare(password, user.password);
+        break;
+
+      case 'shopadmin':
+        if (!email || !password) return NextResponse.json({ message: "Email and password required." }, { status: 400 });
+        user = await ShopAdmin.findOne({ email });
+        if (user) isPasswordCorrect = await bcrypt.compare(password, user.password);
+        break;
+
+      case 'customer':
+        if (!shopId || !phone || !password) return NextResponse.json({ message: "Shop ID, Phone, and Password required." }, { status: 400 });
+        user = await Customer.findOne({ shopId, phone });
+        if (user) isPasswordCorrect = await bcrypt.compare(password, user.password);
+        break;
+
+      default:
+        return NextResponse.json({ message: "Invalid role specified." }, { status: 400 });
+    }
+
+    if (!user || !isPasswordCorrect) {
+      return NextResponse.json({ message: "Invalid credentials." }, { status: 401 });
+    }
+
+    // Create JWT
+    const payload = {
+      id: user._id.toString(),
+      role: role,
+      // Add shopId for shopadmin and customer
+    };
+    
+    // Add shopId to payload for shopadmin and customer
+    if (role === 'shopadmin') {
+      const shop = await Shop.findOne({ _id: user.shopId });
+      payload.shopId = shop ? shop.shopId : null;
+    } else if (role === 'customer') {
+      const shop = await Shop.findOne({ _id: user.shopId });
+      payload.shopId = shop ? shop.shopId : null;
+    }
+    
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    const response = NextResponse.json({ message: "Login successful!", success: true });
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24, // 1 day
+      path: '/',
+    });
+
+    return response;
+
+  } catch (error) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
+}
