@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link'; // Import Link
 
 export default function PortalAccess() {
   const [activeTab, setActiveTab] = useState('shopadmin'); // 'shopadmin', 'customer', 'superadmin'
@@ -231,6 +232,11 @@ export default function PortalAccess() {
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
+          
+          {/* NEW: Shop Registration Link */}
+          <p style={{ textAlign: 'center', marginTop: '10px' }}>
+            New Shop? <Link href="/signup" style={{ color: '#4CAF50', fontWeight: 'bold' }}>Register Here</Link>
+          </p>
         </form>
       )}
 

@@ -174,12 +174,13 @@ export default function VerifyOtpPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage(`${data.message}\nYour Shop ID is: ${data.shopId}\nShop Code: ${data.shopCode}`);
-        // Redirect to portal access page after 3 seconds
+        // Updated message to clearly state that Super Admin approval is the next step
+        setMessage(`Success! Your shop request has been registered.\nShop ID: ${data.shopId}\nShop Code: ${data.shopCode}\n\nPlease wait for Super Admin approval before attempting to log in.`);
+        
+        // Redirect to portal access page after 6 seconds, keeping the form in front for a longer read time
         setTimeout(() => {
-          // Changed to redirect to the main login portal for the Shop Admin to sign in
           router.push('/portal-access');
-        }, 3000);
+        }, 6000);
       } else {
         setError(data.message || 'OTP verification failed.');
       }
@@ -215,7 +216,7 @@ export default function VerifyOtpPage() {
           marginBottom: '20px'
         }}>
           <p style={{ color: '#155724', margin: 0, whiteSpace: 'pre-line' }}>{message}</p>
-          <p style={{ color: '#155724', margin: '10px 0 0 0', fontSize: '14px' }}>Redirecting to Shop Admin login page...</p>
+          <p style={{ color: '#155724', margin: '10px 0 0 0', fontSize: '14px', fontWeight: 'bold' }}>Redirecting to Login Portal...</p>
         </div>
       )}
 

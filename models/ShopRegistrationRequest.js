@@ -29,10 +29,10 @@ const ShopRegistrationRequestSchema = new mongoose.Schema({
   address: { type: String },
   city: { type: String },
   state: { type: String },
-  // FIX: Removed 'required: true' so they can be cleaned up after approval
   otp: { type: String }, 
   otpExpires: { type: Date }, 
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  // NEW ENUM: Use otp_pending/otp_completed to clearly separate this from Super Admin approval
+  status: { type: String, enum: ['otp_pending', 'otp_completed', 'rejected'], default: 'otp_pending' },
   shopId: { type: String }, // Will be generated after OTP verification
   shopCode: { type: String }, // Will be generated after OTP verification
 }, { timestamps: true });
