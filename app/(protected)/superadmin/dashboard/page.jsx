@@ -17,17 +17,22 @@ export default function SuperAdminDashboard() {
       // For this implementation, we will assume a combined endpoint 
       // is available or simplify the fetch for now.
       // Fetch all shops and filter client-side for pending status.
-      const res = await fetch('/api/superadmin/pending-shops', {
+      
+      // FIX: Changed URL from '/api/superadmin/pending-shops' to '/api/auth/superadmin/pending-shops'
+      const res = await fetch('/api/auth/superadmin/pending-shops', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
 
       if (!res.ok) {
-        throw new Error("Failed to fetch pending shops.");
+        // Provide a more specific error based on the response
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to fetch pending shops.");
       }
       
       const allShops = await res.json();
-      // Filter for shops that are newly registered (status 'pending')
+      
+      // This client-side filter is correct based on your API response
       const filteredShops = allShops.filter(shop => shop.status === 'pending');
 
       // We will also fetch the associated admin for the shop here if needed for better display.
@@ -49,7 +54,8 @@ export default function SuperAdminDashboard() {
   const handleApprove = async (shopId) => {
     setMessage('');
     try {
-      const res = await fetch('/api/superadmin/approve-shop', {
+      // This URL is correct as per your file structure
+      const res = await fetch('/api/auth/superadmin/approve-shop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shopId }),

@@ -416,14 +416,15 @@ export async function POST(request) {
 
     console.log("OTP Verification Request:", { email, otp });
 
-    // Find request by email - get the most recent pending one
+    // Find request by email
+    // FIX 1: Look for 'otp_pending' status, not 'pending'
     const requestRecord = await ShopRegistrationRequest.findOne({
       email,
-      status: 'pending'
+      status: 'otp_pending' 
     }).sort({ createdAt: -1 });
 
     if (!requestRecord) {
-      console.log("No pending registration found for:", email);
+      console.log("No 'otp_pending' registration found for:", email);
       return NextResponse.json({ message: "No pending registration found. Please register again." }, { status: 404 });
     }
 
@@ -452,39 +453,43 @@ export async function POST(request) {
     console.log("Proceeding with shop creation...");
 
     // Check if shop and admin already exist (prevent duplicates)
-    // NOTE: This check might create confusion if multiple OTPs are generated. 
-    // We rely on the `status: pending` check on the requestRecord above to filter valid attempts.
     const existingShop = await Shop.findOne({ name: requestRecord.shopName });
     let shop;
     let shopId;
     let shopCode;
 
     if (existingShop) {
-      // Shop exists, use existing
       shop = existingShop;
       shopId = existingShop.shopId;
       shopCode = existingShop.shopCode;
       console.log("Existing shop found:", shopId);
 
-      // Check if ShopAdmin already exists for this shop
       const existingAdmin = await ShopAdmin.findOne({ email: requestRecord.email, shopId: shop._id });
       if (existingAdmin) {
         console.log("Shop Admin already exists");
+        
+        // Mark the request as completed even if admin already exists
+        requestRecord.status = 'otp_completed';
+        requestRecord.otp = undefined;
+        requestRecord.otpExpires = undefined;
+        requestRecord.shopId = shopId;
+        requestRecord.shopCode = shopCode;
+        await requestRecord.save();
+        
         return NextResponse.json({ 
-          message: "Shop and Admin already exist.",
+          message: "Shop and Admin already exist. Awaiting Super Admin approval.",
           success: true,
           shopId,
           shopCode
         });
       }
     } else {
-      // Generate unique Shop ID and Shop Code for new shop
       console.log("Generating new shop ID and Code...");
       shopId = await generateShopId();
       shopCode = await generateShopCode();
       console.log("Generated:", shopId, shopCode);
 
-      // Create Shop - NEW: Set initial status to 'pending'
+      // Create Shop - with 'pending' status for Super Admin approval
       shop = await Shop.create({
         shopId,
         shopCode,
@@ -503,7 +508,7 @@ export async function POST(request) {
     }
     
     console.log("Creating Shop Admin...");
-    // Create ShopAdmin - NEW: Set initial status to 'pending'
+    // Create ShopAdmin - with 'pending' status
     await ShopAdmin.create({
       name: requestRecord.ownerName,
       email: requestRecord.email,
@@ -514,21 +519,21 @@ export async function POST(request) {
     });
     console.log("Shop Admin created successfully with status: pending");
 
-    // Update the request record (cleaning up OTP data and setting final status)
+    // Update the request record
     console.log("Updating registration request status...");
-    // Mark the OTP verification process as successfully completed ("approved" status for the request record)
-    requestRecord.status = 'approved';
+    
+    // FIX 2: Set status to 'otp_completed' as per your Mongoose model
+    requestRecord.status = 'otp_completed';
     requestRecord.otp = undefined;
     requestRecord.otpExpires = undefined;
     requestRecord.shopId = shopId;
     requestRecord.shopCode = shopCode;
     await requestRecord.save();
-    console.log("Registration request marked as completed (OTP validated). Shop is now pending Super Admin approval.");
+    console.log("Registration request marked as 'otp_completed'. Shop is now pending Super Admin approval.");
 
     console.log("✅ OTP verification complete!");
 
     return NextResponse.json({
-      // IMPORTANT: Updated message to inform the user about the pending approval step
       message: "Email verified successfully! Your shop has been registered and is awaiting Super Admin approval. You will receive an email once approved.",
       success: true,
       shopId,
