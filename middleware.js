@@ -28,13 +28,23 @@ export async function middleware(request) {
   try {
     const { payload } = await jwtVerify(token, getJwtSecretKey());
     const userRole = payload.role;
+    const loginUrl = new URL('/portal-access', request.url);
 
-    // Role-based access control
+    // UPDATED: More specific role-based access control
+    
+    // Super Admin routes
     if (pathname.startsWith('/superadmin') && userRole !== 'superadmin') {
-      return NextResponse.redirect(new URL('/portal-access', request.url)); // Or a "not authorized" page
+      return NextResponse.redirect(loginUrl);
     }
-    if (pathname.startsWith('/dashboard') && userRole !== 'shopadmin' && userRole !== 'customer') {
-      return NextResponse.redirect(new URL('/portal-access', request.url));
+
+    // Shop Admin routes
+    if (pathname.startsWith('/dashboard') && userRole !== 'shopadmin') {
+      return NextResponse.redirect(loginUrl);
+    }
+    
+    // Customer routes
+    if (pathname.startsWith('/customer') && userRole !== 'customer') {
+      return NextResponse.redirect(loginUrl);
     }
 
     return NextResponse.next();
@@ -51,6 +61,7 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/superadmin/:path*',
+    '/customer/:path*', // ADDED: Protect the new customer route
     '/login',
     '/signup',
     '/portal-access'

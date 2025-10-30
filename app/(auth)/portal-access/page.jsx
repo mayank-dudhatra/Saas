@@ -80,8 +80,8 @@ export default function PortalAccess() {
       const data = await res.json();
 
       if (res.ok) {
-        // TODO: redirect to customer dashboard
-        router.push('/dashboard');
+        // UPDATED: Redirect to customer dashboard instead of /dashboard
+        router.push('/customer/dashboard'); 
       } else {
         setError(data.message || 'Failed to log in.');
       }
