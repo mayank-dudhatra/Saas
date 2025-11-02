@@ -16,8 +16,8 @@ const SuperAdmin = mongoose.models.SuperAdmin || mongoose.model('SuperAdmin', Su
 const MONGODB_URI = process.env.MONGODB_URI;
 
 // --- CONFIGURE YOUR SUPER ADMIN DETAILS HERE ---
-const SUPER_ADMIN_EMAIL = "superadmin@agrosaas.com";
-const SUPER_ADMIN_PASSWORD = "SuperAdmin@123!";
+const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL;
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD;
 // ---------------------------------------------
 
 const createSuperAdmin = async () => {
