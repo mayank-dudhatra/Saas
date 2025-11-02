@@ -40,7 +40,7 @@ export default function SignupPage() {
         // In development, show the OTP in console and alert
         if (data.devOtp) {
           console.log("🧪 Development Mode - OTP:", data.devOtp);
-          alert(`Development Mode: Your OTP is ${data.devOtp}\n(This alert only appears in development)`);
+          // alert(`Development Mode: Your OTP is ${data.devOtp}\n(This alert only appears in development)`);
         }
         
         // Redirect to OTP page on success
