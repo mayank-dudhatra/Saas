@@ -13,7 +13,7 @@ export async function middleware(request) {
   const token = request.cookies.get('token')?.value;
   const { pathname } = request.nextUrl;
 
-  const publicPaths = ['/login', '/signup', '/portal-access', '/verify-otp', '/api/auth'];
+  const publicPaths = ['/login', '/signup', '/portal-access', '/verify-otp', '/forgot-password', '/reset-password', '/api/auth'];
   
   // Allow public paths and API routes to be accessed without a token
   if (publicPaths.some(path => pathname.startsWith(path))) {
@@ -30,15 +30,13 @@ export async function middleware(request) {
     const userRole = payload.role;
     const loginUrl = new URL('/portal-access', request.url);
 
-    // UPDATED: More specific role-based access control
-    
     // Super Admin routes
     if (pathname.startsWith('/superadmin') && userRole !== 'superadmin') {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Shop Admin routes
-    if (pathname.startsWith('/dashboard') && userRole !== 'shopadmin') {
+    // --- UPDATED: Shop Admin routes ---
+    if (pathname.startsWith('/shop') && userRole !== 'shopadmin') {
       return NextResponse.redirect(loginUrl);
     }
     
@@ -51,7 +49,7 @@ export async function middleware(request) {
   } catch (err) {
     console.error('JWT Verification failed:', err.message);
     const loginUrl = new URL('/portal-access', request.url);
-    loginUrl.searchParams.set('from', pathname); // Optional: redirect back after login
+    loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
   }
 }
@@ -59,11 +57,14 @@ export async function middleware(request) {
 // Define which paths the middleware should run on
 export const config = {
   matcher: [
-    '/dashboard/:path*',
+    // --- UPDATED: Protect /shop instead of /dashboard ---
+    '/shop/:path*',
     '/superadmin/:path*',
-    '/customer/:path*', // ADDED: Protect the new customer route
+    '/customer/:path*',
     '/login',
     '/signup',
-    '/portal-access'
+    '/portal-access',
+    '/forgot-password',
+    '/reset-password'
   ],
 };

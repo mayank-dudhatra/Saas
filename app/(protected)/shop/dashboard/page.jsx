@@ -1,52 +1,33 @@
 'use client';
 import React from 'react';
-import { useRouter } from 'next/navigation';
 
+// This is the main dashboard page for the Shop Admin.
+// The logout button has been removed and is now handled by the sidebar in the layout.
 export default function ShopAdminDashboard() {
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    try {
-      // Call the existing logout API endpoint
-      const res = await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-
-      if (res.ok) {
-        // Redirect to the portal access page after successful logout
-        router.push('/portal-access');
-      } else {
-        // Handle unexpected logout failure
-        console.error("Logout failed on server side.");
-        alert("Logout failed. Please try clearing your cookies manually.");
-      }
-    } catch (error) {
-      console.error("Logout error:", error);
-      alert("An error occurred during logout.");
-    }
-  };
-
   return (
-    <div style={{ maxWidth: '800px', margin: '50px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
-      <h1>Welcome, Shop Admin!</h1>
-      <p>This is your shop management dashboard. Here you will add customers and manage your shop.</p>
+    <div>
+      <h1 className="text-3xl font-bold text-gray-800">Welcome, Shop Admin!</h1>
+      <p className="mt-2 text-gray-600">This is your shop management dashboard. Here you will add customers and manage your shop.</p>
       
-      <button 
-        onClick={handleLogout}
-        style={{
-          marginTop: '20px',
-          padding: '10px 20px',
-          backgroundColor: '#dc3545', /* Red color for danger/logout */
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontWeight: 'bold'
-        }}
-      >
-        Logout
-      </button>
+      {/* You can start adding dashboard widgets here, e.g.:
+        - Quick stats (Total Sales, New Customers)
+        - Recent Orders
+        - Low Stock Alerts
+      */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-gray-700">Total Sales</h3>
+          <p className="text-2xl font-bold text-green-600 mt-2">₹0.00</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-gray-700">New Customers</h3>
+          <p className="text-2xl font-bold text-blue-600 mt-2">0</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-gray-700">Pending Orders</h3>
+          <p className="text-2xl font-bold text-yellow-600 mt-2">0</p>
+        </div>
+      </div>
     </div>
   );
 }

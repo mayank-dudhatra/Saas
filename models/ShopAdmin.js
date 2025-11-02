@@ -25,6 +25,10 @@ const ShopAdminSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
   // NEW: Add status field - inherits from shop, but useful for quick reference
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+
+    // --- NEW FIELDS FOR PASSWORD RESET ---
+    resetPasswordOtp: { type: String },
+    resetPasswordOtpExpires: { type: Date },
 });
 
 // Email and phone should be unique per shop (multiple admins can have same email/phone in different shops)
