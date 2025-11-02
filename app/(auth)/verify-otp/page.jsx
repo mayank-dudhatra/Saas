@@ -1,7 +1,13 @@
 // 'use client';
+
+// export const dynamic = 'force-dynamic';
+
+
 // import { useState } from 'react';
 // import { useRouter, useSearchParams } from 'next/navigation';
 // import Link from 'next/link';
+
+
 
 // export default function VerifyOtpPage() {
 //   const [otp, setOtp] = useState('');
@@ -34,11 +40,13 @@
 //       const data = await res.json();
 
 //       if (res.ok) {
-//         setMessage(`${data.message}\nYour Shop ID is: ${data.shopId}\nShop Code: ${data.shopCode}`);
-//         // Redirect to portal access page after 3 seconds
+//         // Updated message to clearly state that Super Admin approval is the next step
+//         setMessage(`Success! Your shop request has been registered.\nShop ID: ${data.shopId}\nShop Code: ${data.shopCode}\n\nPlease wait for Super Admin approval before attempting to log in.`);
+        
+//         // Redirect to portal access page after 6 seconds, keeping the form in front for a longer read time
 //         setTimeout(() => {
 //           router.push('/portal-access');
-//         }, 3000);
+//         }, 6000);
 //       } else {
 //         setError(data.message || 'OTP verification failed.');
 //       }
@@ -74,7 +82,7 @@
 //           marginBottom: '20px'
 //         }}>
 //           <p style={{ color: '#155724', margin: 0, whiteSpace: 'pre-line' }}>{message}</p>
-//           <p style={{ color: '#155724', margin: '10px 0 0 0', fontSize: '14px' }}>Redirecting to login page...</p>
+//           <p style={{ color: '#155724', margin: '10px 0 0 0', fontSize: '14px', fontWeight: 'bold' }}>Redirecting to Login Portal...</p>
 //         </div>
 //       )}
 
@@ -136,25 +144,24 @@
 //   );
 // }
 
+
+
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-
-import { useState } from 'react';
+// 1. Import Suspense
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-
-
-export default function VerifyOtpPage() {
+// 2. Move all your page logic into a new component
+function VerifyOtpForm() {
   const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const email = searchParams.get('email');
+  const email = searchParams.get('email'); // This is now safe inside Suspense
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -178,10 +185,8 @@ export default function VerifyOtpPage() {
       const data = await res.json();
 
       if (res.ok) {
-        // Updated message to clearly state that Super Admin approval is the next step
         setMessage(`Success! Your shop request has been registered.\nShop ID: ${data.shopId}\nShop Code: ${data.shopCode}\n\nPlease wait for Super Admin approval before attempting to log in.`);
         
-        // Redirect to portal access page after 6 seconds, keeping the form in front for a longer read time
         setTimeout(() => {
           router.push('/portal-access');
         }, 6000);
@@ -279,5 +284,15 @@ export default function VerifyOtpPage() {
         </p>
       )}
     </div>
+  );
+}
+
+// 3. Your default export now just wraps the form in Suspense
+// You can also remove `export const dynamic = 'force-dynamic';` from this file.
+export default function VerifyOtpPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifyOtpForm />
+    </Suspense>
   );
 }
