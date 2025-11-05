@@ -59,7 +59,8 @@ export async function POST(request) {
       shopId: shop.shopId, // The shopId string like "SHOP001"
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // --- 1. UPDATED THIS LINE ---
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30d' });
 
     const response = NextResponse.json({
       message: "Login successful!",
@@ -79,7 +80,8 @@ export async function POST(request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      // --- 2. UPDATED THIS LINE ---
+      maxAge: 60 * 60 * 24 * 30, // 30 days
       path: '/',
     });
 
@@ -93,4 +95,3 @@ export async function POST(request) {
     );
   }
 }
-
