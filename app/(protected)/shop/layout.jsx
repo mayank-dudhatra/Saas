@@ -1,13 +1,10 @@
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
-import dbConnect from '@/lib/dbConnect';
-import ShopAdmin from '@/models/ShopAdmin';
-import Shop from '@/models/Shop'; 
 import ShopAdminSidebar from "@/Components/ShopAdmin/sidebar"; 
 import { redirect } from 'next/navigation';
 import React from 'react';
-// --- 1. Import your new Provider ---
 import { ShopDataProvider } from './ShopDataContext';
+import { headers } from 'next/headers'; // Import headers
 
 export const dynamic = 'force-dynamic';
 
@@ -20,49 +17,82 @@ const getJwtSecretKey = () => {
   return new TextEncoder().encode(secret);
 };
 
-// Function to fetch Shop Admin data
+// --- NEW Data Fetching Function ---
 async function getShopAdminData() {
   try {
+    // We need to get the cookie and pass it to the API route manually
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
+    const token = cookieStore.get('token');
+
     if (!token) return null;
 
-    const { payload } = await jwtVerify(token, getJwtSecretKey());
-    if (payload.role !== 'shopadmin' || !payload.id) return null;
+    // Use the full internal URL for the fetch
+    const host = headers().get('host');
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const url = `${protocol}://${host}/api/shop/me`;
 
-    await dbConnect();
-    const shopAdmin = await ShopAdmin.findById(payload.id).populate('shopId').lean();
-    if (!shopAdmin || !shopAdmin.shopId) return null;
-    
-    // Log for debugging
-    console.log("getShopAdminData (Layout) is fetching. Found logoUrl:", shopAdmin.shopId.logoUrl);
-    
-    return {
-      shopName: shopAdmin.shopId.name,
-      shopIdString: shopAdmin.shopId.shopId, 
-      shopLogoUrl: shopAdmin.shopId.logoUrl,
-      shopAdminName: shopAdmin.name,
-    };
+    const res = await fetch(url, {
+      // Pass the cookie to the API route for authentication
+      headers: {
+        'Cookie': `token=${token.value}`
+      },
+      // --- THIS IS THE 7-DAY CACHING ---
+      next: { 
+        revalidate: 604800,  // 7 days in seconds
+        tags: ['shop-data'] // Tag for on-demand revalidation
+      }
+    });
+
+    if (!res.ok) {
+      console.error("Failed to fetch shop data, status:", res.status);
+      return null;
+    }
+
+    const shopData = await res.json();
+    console.log("getShopAdminData (Layout) fetched. Found logoUrl:", shopData.shopLogoUrl);
+    return shopData;
+
   } catch (error) {
     console.error("Error fetching shop admin data in layout:", error);
     return null;
   }
 }
 
+// Simple auth check. The /api/shop/me route will do the full verification.
+async function verifyAuth() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
+  if (!token) return false;
+
+  try {
+    // Quick verification
+    await jwtVerify(token, getJwtSecretKey());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+
 export default async function ShopLayout({ children }) {
   
-  // 2. Fetch the data on the server
-  const shopData = await getShopAdminData();
-
-  if (!shopData) {
+  // Verify auth first
+  const isAuthenticated = await verifyAuth();
+  if (!isAuthenticated) {
     redirect('/portal-access');
   }
+
+  // Fetch the data (will be cached)
+  const shopData = await getShopAdminData();
   
-  // 3. We no longer use React.cloneElement
-  // We wrap the entire layout in the provider
+  // If auth passed but data failed (e.g., user deleted in DB)
+  if (!shopData) {
+    console.error("Authenticated but failed to get shop data. Logging out.");
+    redirect('/portal-access');
+  }
 
   return (
-    // 4. Pass the server-fetched data into the Provider
+    // Pass the server-fetched data into the Provider
     <ShopDataProvider serverShopData={shopData}>
       <div className="flex bg-gray-50">
         

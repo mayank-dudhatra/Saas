@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
 import dbConnect from '@/lib/dbConnect';
 import Shop from '@/models/Shop';
+import { revalidateTag } from 'next/cache'; // <-- 1. IMPORT THIS
 
 export const dynamic = 'force-dynamic';
 
@@ -10,10 +11,8 @@ const getJwtSecretKey = () => new TextEncoder().encode(process.env.JWT_SECRET);
 
 // Re-usable function to verify admin and get their Shop's *string* ID
 async function verifyShopAdmin() {
-  // --- THIS IS THE FIX ---
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
-  // --- END FIX ---
 
   if (!token) return null;
 
@@ -58,7 +57,12 @@ export async function POST(request) {
       return NextResponse.json({ message: "Shop not found." }, { status: 404 });
     }
 
-    console.log("API Success: Shop updated.", updatedShop);
+    // --- 2. ADD THIS LINE ---
+    // This instantly clears the 7-day cache for the 'shop-data' tag.
+    revalidateTag('shop-data');
+    // --- END OF CHANGE ---
+
+    console.log("API Success: Shop updated and cache revalidated.", updatedShop);
 
     return NextResponse.json({ 
       message: "Logo updated successfully!", 
