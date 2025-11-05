@@ -85,50 +85,54 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "@/lib/mailer";
 
+// This ensures the route is always treated as dynamic and not cached
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
-  await dbConnect();
+  // We wrap the entire logic in a try...catch block
   try {
+    // Connect to the database
+    await dbConnect();
+
+    // Parse the request body
     const { shopName, ownerName, email, phone, password, address, city, state } = await request.json();
 
-    // Validate required fields
+    // --- 1. Validation ---
     if (!shopName || !ownerName || !email || !phone || !password) {
       return NextResponse.json({ message: "Missing required fields." }, { status: 400 });
     }
 
-    // Check if user already exists
+    // --- 2. Check for existing approved admin ---
     const existingUser = await ShopAdmin.findOne({ email });
-    if (existingUser) {
-      // FIX: Check the permanent ShopAdmin status, not just existence.
-      // If the admin exists but is pending, let them verify OTP again if needed.
-      if (existingUser.status === 'approved') {
-        return NextResponse.json({ message: "An approved account with this email already exists." }, { status: 400 });
-      }
+    if (existingUser && existingUser.status === 'approved') {
+      return NextResponse.json({ message: "An approved account with this email already exists." }, { status: 400 });
     }
 
-    // Hash password
+    // --- 3. Hash Password ---
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Generate OTP
+    // --- 4. Generate OTP ---
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
     console.log("Registration OTP:", { email, otp, expiresAt: otpExpires });
 
-    // Upsert the request: create new or update existing pending request for this email
+    // --- 5. Save/Update Registration Request ---
+    // This will find a request with this email that is still pending (otp_pending)
+    // and update it with the new info and OTP. If one doesn't exist, it will create one (upsert: true).
     const requestRecord = await ShopRegistrationRequest.findOneAndUpdate(
-      // Match on email and the old 'pending' status for continuity, or the new 'otp_pending' status
-      { email, status: { $in: ['pending', 'otp_pending'] } },
+      { email, status: 'otp_pending' },
       { 
         shopName, ownerName, email, phone, password: hashedPassword, address, city, state, 
         otp, otpExpires, 
-        status: 'otp_pending' // NEW: Explicitly set to otp_pending
+        status: 'otp_pending'
       },
       { upsert: true, new: true }
     );
 
     console.log("Registration request saved:", requestRecord._id);
 
-    // Send OTP email
+    // --- 6. Send OTP Email ---
     try {
       await sendEmail({
         to: email,
@@ -148,11 +152,13 @@ export async function POST(request) {
       });
       console.log("OTP email sent successfully to:", email);
     } catch (emailError) {
+      // This catch is only for the email
       console.error("Failed to send email:", emailError);
-      // Still return success so user can see the OTP in console for development
+      // We still return success so you can test with the OTP in the console
       console.log("⚠️  EMAIL SEND FAILED - OTP for development:", otp);
     }
 
+    // --- 7. Send Success Response ---
     return NextResponse.json({ 
       message: "OTP sent to your email address. Please check your email and verify.", 
       success: true,
@@ -161,7 +167,20 @@ export async function POST(request) {
     }, { status: 201 });
 
   } catch (error) {
+    // --- THIS IS THE UPDATED CATCH BLOCK ---
+    // This will catch any error from dbConnect, await request.json(), bcrypt, etc.
     console.error("Registration Error:", error);
-    return NextResponse.json({ message: "An error occurred during registration." }, { status: 500 });
+    
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    
+    return NextResponse.json({ 
+      message: "An error occurred during registration.",
+      // Only send the detailed error message and stack in development
+      ...(process.env.NODE_ENV === 'development' && { 
+        error: errorMessage, 
+        stack: error.stack 
+      })
+    }, { status: 500 });
+    // --- END OF UPDATE ---
   }
 }

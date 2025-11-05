@@ -3,21 +3,13 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard,
-  Printer,
-  DollarSign,
-  Package,
-  Truck,
-  CreditCard,
-  Users,
-  Globe,
-  BarChart,
-  Settings,
-  Store,
-  LogOut // Import the LogOut icon
+  LayoutDashboard, Printer, DollarSign, Package, Truck,
+  CreditCard, Users, Globe, BarChart, Settings, Store, LogOut
 } from 'lucide-react';
+// --- 1. Import the new hook ---
+import { useShopData } from '@/app/(protected)/shop/ShopDataContext';
 
-// --- Icon Mapping ---
+// --- (menuItems array remains the same) ---
 const menuItems = [
   { name: 'Dashboard', href: '/shop/dashboard', icon: LayoutDashboard },
   { name: 'Billing / POS', href: '/shop/billing', icon: Printer },
@@ -31,26 +23,19 @@ const menuItems = [
   { name: 'Shop Settings', href: '/shop/settings', icon: Settings },
 ];
 
-/**
- * ShopAdminSidebar Component
- * @param {object} props
- * @param {string} props.shopName - The name of the shop.
- * @param {string} props.shopId - The unique ID of the shop.
- * @param {string} [props.shopLogoUrl] - (Optional) URL for the shop's logo.
- */
-export default function ShopAdminSidebar({ 
-  shopName = "Your Shop Name", 
-  shopId = "SHOP001", 
-  shopLogoUrl 
-}) {
+// --- 2. Remove all props from the function ---
+export default function ShopAdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter(); // Add router for logout
+  const router = useRouter(); 
+
+  // --- 3. Get data from the context ---
+  const { shopData } = useShopData();
 
   const handleLogout = async () => {
     try {
       const res = await fetch('/api/auth/logout', { method: 'POST' });
       if (res.ok) {
-        router.push('/portal-access'); // Redirect to login
+        router.push('/portal-access'); 
       } else {
         console.error("Logout failed.");
       }
@@ -59,10 +44,27 @@ export default function ShopAdminSidebar({
     }
   };
 
+  // 4. Add a loading state in case data isn't ready
+  if (!shopData) {
+    return (
+      <div className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white text-gray-700">
+        <div className="flex items-center gap-3 px-4 py-5 bg-green-600 text-white">
+          <div className="h-10 w-10 rounded-full bg-green-700"></div>
+          <div>
+            <div className="h-4 w-32 bg-green-700 rounded"></div>
+            <div className="h-3 w-24 bg-green-700 rounded mt-1"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 5. Use data from context state ---
+  const { shopName, shopAdminName, shopLogoUrl } = shopData;
+
   return (
     <div className="flex h-screen w-64 flex-col border-r border-gray-200 bg-white text-gray-700">
       
-      {/* Sidebar Header: Shop Info */}
       <div className="flex items-center gap-3 px-4 py-5 bg-green-600 text-white">
         {shopLogoUrl ? (
           <img 
@@ -78,15 +80,14 @@ export default function ShopAdminSidebar({
         )}
         <div>
           <h2 className="text-base font-bold leading-tight">{shopName}</h2>
-          <span className="text-xs font-medium text-green-100">{shopId}</span>
+          <span className="text-xs font-medium text-green-100">{shopAdminName}</span>
         </div>
       </div>
 
-      {/* Navigation Links */}
+      {/* Navigation Links (no changes) */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {menuItems.map((item) => {
           const isActive = pathname === item.href;
-          
           return (
             <Link
               key={item.name}
@@ -107,7 +108,7 @@ export default function ShopAdminSidebar({
         })}
       </nav>
 
-      {/* --- Sidebar Footer with Logout --- */}
+      {/* Logout (no changes) */}
       <div className="border-t border-gray-200 p-2">
         <button
           onClick={handleLogout}
@@ -120,4 +121,3 @@ export default function ShopAdminSidebar({
     </div>
   );
 }
-

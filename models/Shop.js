@@ -22,5 +22,7 @@ const ShopSchema = new mongoose.Schema({
   state: { type: String },
   // Status is essential for Super Admin approval flow
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+
+  logoUrl: { type: String, default: null },
 }, { timestamps: true });
 export default mongoose.models.Shop || mongoose.model('Shop', ShopSchema);
