@@ -12,6 +12,7 @@
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.8.0",
     "dotenv": "^16.6.1",
+    "html-to-image": "^1.11.13",
     "jose": "^6.1.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.552.0",

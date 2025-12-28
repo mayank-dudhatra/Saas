@@ -16,10 +16,8 @@ cloudinary.config({
 export async function POST(request) {
   // --- 1. Verify User is a Shop Admin ---
   try {
-    // --- THIS IS THE FIX ---
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
-    // --- END FIX ---
 
     if (!token) {
       return NextResponse.json({ message: "Authentication required." }, { status: 401 });
@@ -32,27 +30,32 @@ export async function POST(request) {
     return NextResponse.json({ message: "Authentication failed." }, { status: 401 });
   }
 
-  // --- 2. Generate Signature for Cloudinary ---
+  // --- 2. Perform the Actual Upload ---
   try {
-    const timestamp = Math.round(new Date().getTime() / 1000);
+    const { file } = await request.json();
 
-    const paramsToSign = { timestamp };
+    if (!file) {
+      return NextResponse.json({ message: "No file data provided." }, { status: 400 });
+    }
 
-    const signature = cloudinary.utils.api_sign_request(
-      paramsToSign,
-      process.env.CLOUDINARY_API_SECRET
-    );
+    // Upload the base64 image directly to Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(file, {
+      folder: 'bills', // Optional: saves all bills in a specific folder
+      resource_type: 'image'
+    });
 
-    // --- 3. Send Signature and Public Data to Client ---
+    // --- 3. Return the secure URL to the frontend ---
     return NextResponse.json({
-      signature: signature,
-      timestamp: timestamp,
-      apiKey: process.env.CLOUDINARY_API_KEY,
-      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      success: true,
+      secure_url: uploadResponse.secure_url,
+      url: uploadResponse.url
     });
 
   } catch (error) {
-    console.error("Cloudinary signing error:", error);
-    return NextResponse.json({ message: "Error generating upload signature." }, { status: 500 });
+    console.error("Cloudinary upload error:", error);
+    return NextResponse.json({ 
+      message: "Error uploading image to Cloudinary.",
+      error: error.message 
+    }, { status: 500 });
   }
 }
