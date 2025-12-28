@@ -1,8 +1,22 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Plus, Search, FileDown, X, Edit, Trash, Image as ImageIcon, Package, AlertCircle } from 'lucide-react';
+import { Plus, Search, FileDown, X, Edit, Trash, Image as ImageIcon, Package, AlertCircle, IndianRupee } from 'lucide-react';
+
+// --- Helper: Calculate Price Including GST ---
+const calculatePriceWithGst = (priceObj, gstSlab) => {
+  const amount = Number(priceObj?.amount) || 0;
+  // If the price is already inclusive, just return the amount
+  if (priceObj?.taxType === 'inclusive') return amount;
+  
+  // Extract numeric rate from slab strings like "GST@18%" or "IGST@12%"
+  const match = gstSlab?.match(/@(\d+(\.\d+)?)%/);
+  const rate = match ? parseFloat(match[1]) : 0;
+  
+  // Final Price = Base Amount + (Base Amount * GST Rate / 100)
+  return amount + (amount * rate) / 100;
+};
 
 // --- Reusable Modal Component (Unchanged) ---
 function Modal({ isOpen, onClose, title, children, footer, size = 'max-w-3xl' }) {
@@ -305,13 +319,14 @@ export default function InventoryPage() {
   };
 
   // --- Add Item Submit Logic (Updated) ---
-  const handleAddItem = async (e) => {
+const handleAddItem = async (e) => {
     e.preventDefault();
-    const loadingToastId = toast.loading('Creating item...');
+    const loadingToastId = toast.loading('Processing...');
     
     try {
       let finalImageUrl = formData.imageUrl;
       if (imageFile) {
+        toast.loading('Uploading item image...', { id: loadingToastId });
         const uploadedUrl = await uploadImage();
         if (!uploadedUrl) {
           toast.dismiss(loadingToastId);
@@ -320,11 +335,11 @@ export default function InventoryPage() {
         finalImageUrl = uploadedUrl;
       }
       
+      toast.loading('Saving item to inventory...', { id: loadingToastId });
+      
       const bodyToSend = {
         ...formData,
         imageUrl: finalImageUrl,
-        // Send the stock values as entered by the user.
-        // The API will handle the conversion.
         stockQuantity: Number(formData.stockQuantity) || 0,
         lowStockAlertLevel: Number(formData.lowStockAlertLevel) || 0,
       };
@@ -336,20 +351,16 @@ export default function InventoryPage() {
       });
       
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message);
-      }
+      if (!res.ok) throw new Error(data.message);
       
-      toast.dismiss(loadingToastId);
-      toast.success('Item created successfully!');
+      toast.success('Item created successfully!', { id: loadingToastId });
       setIsAddModalOpen(false);
       fetchItems();
     } catch (err) {
-      toast.dismiss(loadingToastId);
-      toast.error(err.message);
+      toast.error(err.message, { id: loadingToastId });
     }
   };
-
+  
   // --- Filtered Items (Unchanged) ---
   const filteredItems = useMemo(() => {
     return items.filter(
@@ -458,12 +469,14 @@ export default function InventoryPage() {
                     </span>
                     <span className="text-xs text-gray-500 ml-1">{item.unit.baseUnit}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {item.salePrice.amount.toFixed(2)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                    {item.purchasePrice.amount.toFixed(2)}
-                  </td>
+                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-700">
+  ₹{calculatePriceWithGst(item.salePrice, item.gstSlab).toFixed(2)}
+  <span className="text-[10px] text-gray-400 block font-normal">(Incl. GST)</span>
+</td>
+<td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+  ₹{calculatePriceWithGst(item.purchasePrice, item.gstSlab).toFixed(2)}
+  <span className="text-[10px] text-gray-400 block font-normal">(Incl. GST)</span>
+</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-1">
                     <button 
                       onClick={() => toast.error('Edit not implemented')}
@@ -618,33 +631,89 @@ export default function InventoryPage() {
             <h4 className="text-md font-medium text-gray-800">Pricing & Tax</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2">
               
-              <div className="space-y-2 p-3 bg-gray-50 rounded-md border">
-                <FormInput label="Purchase Price (₹)" name="purchasePrice.amount" value={formData.purchasePrice.amount} onChange={handleFormChange} type="number" min="0" step="0.01" required />
-                <div className="flex gap-4 pt-2">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" name="purchasePrice.taxType" value="exclusive" checked={formData.purchasePrice.taxType === 'exclusive'} onChange={handleFormChange} />
-                    Excluding GST
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" name="purchasePrice.taxType" value="inclusive" checked={formData.purchasePrice.taxType === 'inclusive'} onChange={handleFormChange} />
-                    Including GST
-                  </label>
-                </div>
-              </div>
-              
-              <div className="space-y-2 p-3 bg-gray-50 rounded-md border">
-                <FormInput label="Sale Price (₹)" name="salePrice.amount" value={formData.salePrice.amount} onChange={handleFormChange} type="number" min="0" step="0.01" required />
-                <div className="flex gap-4 pt-2">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" name="salePrice.taxType" value="exclusive" checked={formData.salePrice.taxType === 'exclusive'} onChange={handleFormChange} />
-                    Excluding GST
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="radio" name="salePrice.taxType" value="inclusive" checked={formData.salePrice.taxType === 'inclusive'} onChange={handleFormChange} />
-                    Including GST
-                  </label>
-                </div>
-              </div>
+{/* --- Purchase Price Section --- */}
+<div className="space-y-2 p-3 bg-gray-50 rounded-md border">
+  <FormInput 
+    label="Purchase Price (₹)" 
+    name="purchasePrice.amount" 
+    value={formData.purchasePrice.amount} 
+    onChange={handleFormChange} 
+    type="number" 
+    min="0" 
+    step="0.01" 
+    required 
+  />
+  
+  {/* NEW: Final Purchase Price Preview */}
+  <div className="text-xs font-bold text-blue-600 px-1">
+    Total Incl. GST: ₹{calculatePriceWithGst(formData.purchasePrice, formData.gstSlab).toFixed(2)}
+  </div>
+
+  <div className="flex gap-4 pt-2">
+    <label className="flex items-center gap-2 text-sm">
+      <input 
+        type="radio" 
+        name="purchasePrice.taxType" 
+        value="exclusive" 
+        checked={formData.purchasePrice.taxType === 'exclusive'} 
+        onChange={handleFormChange} 
+      />
+      Excluding GST
+    </label>
+    <label className="flex items-center gap-2 text-sm">
+      <input 
+        type="radio" 
+        name="purchasePrice.taxType" 
+        value="inclusive" 
+        checked={formData.purchasePrice.taxType === 'inclusive'} 
+        onChange={handleFormChange} 
+      />
+      Including GST
+    </label>
+  </div>
+</div>
+
+{/* --- Sale Price Section --- */}
+<div className="space-y-2 p-3 bg-gray-50 rounded-md border">
+  <FormInput 
+    label="Sale Price (₹)" 
+    name="salePrice.amount" 
+    value={formData.salePrice.amount} 
+    onChange={handleFormChange} 
+    type="number" 
+    min="0" 
+    step="0.01" 
+    required 
+  />
+  
+  {/* NEW: Final Sale Price Preview */}
+  <div className="text-xs font-bold text-green-600 px-1">
+    Total Incl. GST: ₹{calculatePriceWithGst(formData.salePrice, formData.gstSlab).toFixed(2)}
+  </div>
+
+  <div className="flex gap-4 pt-2">
+    <label className="flex items-center gap-2 text-sm">
+      <input 
+        type="radio" 
+        name="salePrice.taxType" 
+        value="exclusive" 
+        checked={formData.salePrice.taxType === 'exclusive'} 
+        onChange={handleFormChange} 
+      />
+      Excluding GST
+    </label>
+    <label className="flex items-center gap-2 text-sm">
+      <input 
+        type="radio" 
+        name="salePrice.taxType" 
+        value="inclusive" 
+        checked={formData.salePrice.taxType === 'inclusive'} 
+        onChange={handleFormChange} 
+      />
+      Including GST
+    </label>
+  </div>
+</div>
 
               <div className="space-y-2 p-3 rounded-md">
                 <FormSelect label="GST Slab" name="gstSlab" value={formData.gstSlab} onChange={handleFormChange} disabled={!isGstRequired}>
