@@ -29,7 +29,8 @@ export async function POST(request) {
 
       case 'shopadmin':
         if (!email || !password) return NextResponse.json({ message: "Email and password required." }, { status: 400 });
-        user = await ShopAdmin.findOne({ email });
+        // Only allow approved admins to log in
+        user = await ShopAdmin.findOne({ email, status: 'approved' });
         if (user) isPasswordCorrect = await bcrypt.compare(password, user.password);
         break;
 
@@ -44,23 +45,22 @@ export async function POST(request) {
     }
 
     if (!user || !isPasswordCorrect) {
-      return NextResponse.json({ message: "Invalid credentials." }, { status: 401 });
+      return NextResponse.json({ message: "Invalid credentials or account pending approval." }, { status: 401 });
     }
 
-    // Create JWT
+    // Create JWT Payload
     const payload = {
       id: user._id.toString(),
       role: role,
-      // Add shopId for shopadmin and customer
     };
     
-    // Add shopId to payload for shopadmin and customer
-    if (role === 'shopadmin') {
-      const shop = await Shop.findOne({ _id: user.shopId });
-      payload.shopId = shop ? shop.shopId : null;
-    } else if (role === 'customer') {
-      const shop = await Shop.findOne({ _id: user.shopId });
-      payload.shopId = shop ? shop.shopId : null;
+    // Add shop context for Shop Admins and Customers
+    if (role === 'shopadmin' || role === 'customer') {
+      const shop = await Shop.findById(user.shopId).lean();
+      if (shop) {
+        payload.shopId = shop.shopId; // The custom ID (e.g., SHOP001)
+        payload.shopObjectId = shop._id.toString(); // The MongoDB ObjectId [FIX]
+      }
     }
     
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });

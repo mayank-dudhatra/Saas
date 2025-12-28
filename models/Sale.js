@@ -6,15 +6,15 @@ const SaleItemSchema = new mongoose.Schema({
   hsnCode: { type: String, default: 'N/A' },
   quantity: { type: Number, required: true },
   unit: { type: String, required: true },
-  rate: { type: Number, required: true }, // The Base Price per unit
+  rate: { type: Number, required: true }, // Per unit price
   taxType: { type: String, required: true }, // 'inclusive' or 'exclusive'
-  taxableAmount: { type: Number, required: true }, // Total taxable value for this row
+  taxableAmount: { type: Number, required: true }, // Total before tax
   gstRate: { type: Number, default: 0 },
   cgstAmount: { type: Number, default: 0 },
   sgstAmount: { type: Number, default: 0 },
   igstAmount: { type: Number, default: 0 },
-  discount: { type: Number, default: 0 },
-  netAmount: { type: Number, required: true }, // Final total for this row (Incl. Tax)
+  discount: { type: Number, default: 0 }, // Item-wise discount
+  netAmount: { type: Number, required: true }, // Row total (Incl. Tax)
 }, { _id: false });
 
 const SaleSchema = new mongoose.Schema({
@@ -28,7 +28,7 @@ const SaleSchema = new mongoose.Schema({
   totalCGST: { type: Number, default: 0 },
   totalSGST: { type: Number, default: 0 },
   totalGST: { type: Number, required: true },
-  billDiscount: { type: Number, default: 0 },
+  billDiscount: { type: Number, default: 0 }, // Overall bill discount
   
   grossAmount: { type: Number, required: true },
   roundOff: { type: Number, default: 0 },
