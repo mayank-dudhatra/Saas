@@ -13,17 +13,17 @@ export async function middleware(request) {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get('origin');
 
-  // --- 1. Dynamic Origin Check ---
-  // Allow localhost, the specific production domain, AND any Vercel preview URLs
+  // --- 1. Dynamic Origin Check (FIXED) ---
   let isAllowedOrigin = false;
   
+  // Add your specific production domain here if you have a custom domain
   const allowedDomains = ['https://agro-saas.vercel.app', 'http://localhost:3000'];
   
   if (origin) {
     if (allowedDomains.includes(origin)) {
       isAllowedOrigin = true;
     } else if (origin.endsWith('.vercel.app')) {
-      // Allow all vercel preview deployments (e.g. agro-saas-git-main.vercel.app)
+      // Automatically allow all Vercel preview/production URLs
       isAllowedOrigin = true;
     }
   }
@@ -31,24 +31,22 @@ export async function middleware(request) {
   // --- 2. Handle API Routes (CORS) ---
   if (pathname.startsWith('/api/')) {
     
-    // Handle Preflight (OPTIONS)
+    // Handle Preflight (OPTIONS) requests
     if (request.method === 'OPTIONS') {
       if (isAllowedOrigin) {
         return new NextResponse(null, {
           status: 204,
           headers: {
-            'Access-Control-Allow-Origin': origin, // Return the requested origin
+            'Access-Control-Allow-Origin': origin, 
             'Access-Control-Allow-Credentials': 'true',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           },
         });
       }
-      // If origin not allowed, return 403
       return new NextResponse(null, { status: 403, statusText: "Forbidden Origin" });
     }
 
-    // Handle Actual Request
     const response = NextResponse.next();
     
     if (isAllowedOrigin && origin) {
@@ -63,10 +61,12 @@ export async function middleware(request) {
   const token = request.cookies.get('token')?.value;
   const publicPaths = ['/login', '/signup', '/portal-access', '/verify-otp', '/forgot-password', '/reset-password'];
 
+  // Allow access to public paths without checking token
   if (publicPaths.some(path => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
+  // Redirect to login if no token is found
   if (!token) {
     const loginUrl = new URL('/portal-access', request.url);
     return NextResponse.redirect(loginUrl);
@@ -77,6 +77,7 @@ export async function middleware(request) {
     const userRole = payload.role;
     const loginUrl = new URL('/portal-access', request.url);
 
+    // Role-based protection
     if (pathname.startsWith('/superadmin') && userRole !== 'superadmin') {
       return NextResponse.redirect(loginUrl);
     }
