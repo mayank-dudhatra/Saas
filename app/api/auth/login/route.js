@@ -66,16 +66,15 @@ export async function POST(request) {
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
     const response = NextResponse.json({ message: "Login successful!", success: true });
-    response.cookies.set("token", token, {
+   response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 1 day
+      sameSite: 'lax', // CHANGED FROM 'strict' TO 'lax'
+      maxAge: 60 * 60 * 24 * 30,
       path: '/',
     });
 
     return response;
-
   } catch (error) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
