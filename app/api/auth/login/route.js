@@ -43,6 +43,7 @@ export async function POST(request) {
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '30d' });
+    console.log(process.env.JWT_SECRET);
 
     const response = NextResponse.json({
       message: "Login successful!",
@@ -56,6 +57,7 @@ export async function POST(request) {
         shopName: shopAdmin.shopId.name,
       },
     });
+    console.log(response);
 
     // --- FIX: Changed 'strict' to 'lax' to prevent redirect issues ---
     response.cookies.set("token", token, {

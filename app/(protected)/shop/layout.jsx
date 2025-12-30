@@ -7,6 +7,7 @@ import { ShopDataProvider } from './ShopDataContext';
 import { Toaster } from 'react-hot-toast';
 import dbConnect from '@/lib/dbConnect';
 import ShopAdmin from '@/models/ShopAdmin';
+import Shop from '@/models/Shop';
 
 // Removed force-dynamic to allow Next.js to optimize the layout shell
 
